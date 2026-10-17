@@ -1,227 +1,81 @@
-# Magika Python Package
+# mineru-magika
 
-[![image](https://img.shields.io/pypi/v/magika.svg)](https://pypi.python.org/pypi/magika)
-[![NPM Version](https://img.shields.io/npm/v/magika)](https://npmjs.com/package/magika)
-[![image](https://img.shields.io/pypi/l/magika.svg)](https://pypi.python.org/pypi/magika)
-[![image](https://img.shields.io/pypi/pyversions/magika.svg)](https://pypi.python.org/pypi/magika)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8706/badge)](https://www.bestpractices.dev/en/projects/8706)
-![CodeQL](https://github.com/google/magika/workflows/CodeQL/badge.svg)
-[![Actions status](https://github.com/google/magika/actions/workflows/python-build-and-release-package.yml/badge.svg)](https://github.com/google/magika/actions)
-[![PyPI Monthly Downloads](https://static.pepy.tech/badge/magika/month)](https://pepy.tech/projects/magika)
-[![PyPI Downloads](https://static.pepy.tech/badge/magika)](https://pepy.tech/projects/magika)
+A Python-only fork of [Google Magika](https://github.com/google/magika), based on
+[the published 1.0.3 source](https://github.com/google/magika/tree/9f225aa480e675af44343b9160f077073ed1b752).
+The distribution is named **mineru-magika**; the Python import remains **magika**.
+This fork is maintained independently and is not an official Google release.
 
-<!-- [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/google/magika/badge)](https://securityscorecards.dev/viewer/?uri=github.com/google/magika) -->
+## Installation
 
-Magika is a novel AI-powered file type detection tool that relies on the recent advance of deep learning to provide accurate detection. Under the hood, Magika employs a custom, highly optimized model that only weighs about a few MBs, and enables precise file identification within milliseconds, even when running on a single CPU. Magika has been trained and evaluated on a dataset of ~100M samples across 200+ content types (covering both binary and textual file formats), and it achieves an average ~99% accuracy on our test set.
+Choose one ONNX Runtime distribution yourself. This package only installs
+`click>=8.1.7`; it does **not** install ONNX Runtime, DirectML, or GPU extras.
 
-Use Magika as a command line client or in your Python code!
+```sh
+# CPU runtime (choose a version compatible with your Python/platform)
+pip install mineru-magika onnxruntime
 
-You can find more information on which content types are supported, extended documentation, and bindings for other languages on Magika's website at [https://securityresearch.google/magika/](https://securityresearch.google/magika/).
-
-
-## Installing Magika
-
-Magika is available as `magika` on [PyPI](https://pypi.org/project/magika):
-
-To install the most recent stable version:
-
-```shell
-pip install magika
+# Windows x64, Python 3.10–3.14
+pip install mineru-magika "onnxruntime-directml>=1.23,<2"
 ```
 
-If you intend to use Magika only as a command line, you may want to use `pipx install magika` instead.
+Python >=3.8 is supported when a compatible ONNX Runtime is installed. Without a
+runtime, installation succeeds but importing `magika` fails with a missing
+`onnxruntime` module. There is no runtime download or automatic backend selection.
 
-If you want to test out the latest release candidate, you can install it with `pip install --pre magika`.
+Do not install `magika` and `mineru-magika` together: they own the same Python
+namespace. In an existing environment, uninstall `magika` before installing this
+fork. A downstream requirement for the distribution `magika` must also be changed;
+installing this fork does not satisfy that requirement automatically.
 
-## Using Magika as a command-line tool
-
-> Beginning with version `0.6.0`, the magika Python package includes a pre-compiled Rust-based command-line tool, replacing the previous Python version. This binary is distributed as platform-specific wheels for most common architectures. For unsupported platforms, a pure-Python wheel is also available, providing the legacy Python client as a fallback.
-
-```shell
-$ cd tests_data/basic && magika -r *
-asm/code.asm: Assembly (code)
-batch/simple.bat: DOS batch file (code)
-c/code.c: C source (code)
-css/code.css: CSS source (code)
-csv/magika_test.csv: CSV document (code)
-dockerfile/Dockerfile: Dockerfile (code)
-docx/doc.docx: Microsoft Word 2007+ document (document)
-epub/doc.epub: EPUB document (document)
-epub/magika_test.epub: EPUB document (document)
-flac/test.flac: FLAC audio bitstream data (audio)
-handlebars/example.handlebars: Handlebars source (code)
-html/doc.html: HTML document (code)
-ini/doc.ini: INI configuration file (text)
-javascript/code.js: JavaScript source (code)
-jinja/example.j2: Jinja template (code)
-jpeg/magika_test.jpg: JPEG image data (image)
-json/doc.json: JSON document (code)
-latex/sample.tex: LaTeX document (text)
-makefile/simple.Makefile: Makefile source (code)
-markdown/README.md: Markdown document (text)
-[...]
-```
-
-```shell
-$ magika ./tests_data/basic/python/code.py --json
-[
-  {
-    "path": "./tests_data/basic/python/code.py",
-    "result": {
-      "status": "ok",
-      "value": {
-        "dl": {
-          "description": "Python source",
-          "extensions": [
-            "py",
-            "pyi"
-          ],
-          "group": "code",
-          "is_text": true,
-          "label": "python",
-          "mime_type": "text/x-python"
-        },
-        "output": {
-          "description": "Python source",
-          "extensions": [
-            "py",
-            "pyi"
-          ],
-          "group": "code",
-          "is_text": true,
-          "label": "python",
-          "mime_type": "text/x-python"
-        },
-        "score": 0.753000020980835
-      }
-    }
-  }
-]
-```
-
-```shell
-$ cat doc.ini | magika -
--: INI configuration file (text)
-```
-
-```help
-$ magika --help
-Determines the content type of files with deep-learning
-
-Usage: magika [OPTIONS] [PATH]...
-
-Arguments:
-  [PATH]...
-          List of paths to the files to analyze.
-
-          Use a dash (-) to read from standard input (can only be used once).
-
-Options:
-  -r, --recursive
-          Identifies files within directories instead of identifying the directory itself
-
-      --no-dereference
-          Identifies symbolic links as is instead of identifying their content by following them
-
-      --colors
-          Prints with colors regardless of terminal support
-
-      --no-colors
-          Prints without colors regardless of terminal support
-
-  -s, --output-score
-          Prints the prediction score in addition to the content type
-
-  -i, --mime-type
-          Prints the MIME type instead of the content type description
-
-  -l, --label
-          Prints a simple label instead of the content type description
-
-      --json
-          Prints in JSON format
-
-      --jsonl
-          Prints in JSONL format
-
-      --format <CUSTOM>
-          Prints using a custom format (use --help for details).
-
-          The following placeholders are supported:
-
-            %p  The file path
-            %l  The unique label identifying the content type
-            %d  The description of the content type
-            %g  The group of the content type
-            %m  The MIME type of the content type
-            %e  Possible file extensions for the content type
-            %s  The score of the content type for the file
-            %S  The score of the content type for the file in percent
-            %b  The model output if overruled (empty otherwise)
-            %%  A literal %
-
-  -h, --help
-          Print help (see a summary with '-h')
-
-  -V, --version
-          Print version
-```
-
-Check the [Rust CLI docs](https://securityresearch.google/magika/cli-and-bindings/cli/) for more information.
-
-## Using Magika as a Python module
-
-
-Here is a few examples on how to use the `Magika` Python module:
+## Python API and CLI
 
 ```python
->>> from magika import Magika
->>> m = Magika()
->>> res = m.identify_bytes(b'function log(msg) {console.log(msg);}')
->>> print(res.output.label)
-javascript
+from magika import Magika
+
+result = Magika().identify_bytes(b"function log(msg) {console.log(msg);}")
+print(result.output.label)  # javascript
 ```
 
-```python
->>> from magika import Magika
->>> m = Magika()
->>> res = m.identify_path('./tests_data/basic/ini/doc.ini')
->>> print(res.output.label)
-ini
+```sh
+magika-python-client --version
+magika-python-client path/to/file
 ```
 
-```python
->>> from magika import Magika
->>> m = Magika()
->>> with open('./tests_data/basic/ini/doc.ini', 'rb') as f:
->>>     res = m.identify_stream(f)
->>> print(res.output.label)
-ini
+As in the upstream pure-Python wheel, `magika` prints a warning directing you to
+`magika-python-client` and exits with status 1. No Rust executable is bundled.
+The Python API, model, configuration and classification behavior are unchanged.
+The upstream `CPUExecutionProvider` selection is retained, including when using
+the DirectML distribution; this fork does not enable GPU inference.
+
+## Fork changes and provenance
+
+Version 1.0.3 uses upstream commit `9f225aa480e675af44343b9160f077073ed1b752`.
+Changes are limited to distribution metadata, caller-managed runtime dependencies,
+distribution version lookups, Python-only packaging, documentation and CI.
+Model and configuration SHA-256 values are recorded in
+`python/scripts/resource_hashes.json` in the source repository and checked against
+installed artifacts. Original source copyright notices and the Apache-2.0 license
+are retained. The upstream multi-language sources remain for provenance but are
+not included in the Python distributions.
+
+## Development and release
+
+From the repository's `python` directory:
+
+```sh
+uv sync --locked
+uv pip install onnxruntime
+uv run --no-sync pytest tests
+uv build
 ```
 
+CI builds a universal wheel and sdist, rebuilds the wheel from the sdist, and tests
+normal installation without any runtime. CPU checks cover Windows, Linux and
+macOS on Python 3.10–3.14, plus Linux 3.8/3.9. Windows x64 also checks environments
+containing only the DirectML distribution. Linux Python 3.12 runs the upstream
+Python regression suite. Runtime dependencies are installed explicitly by CI.
 
-## Core Concepts
-
-To get the most out of Magika, it's worth learning about its core concepts. You can read about how Magika works, the models, the supported content types, the prediction modes, and notes on how to understand all parts of the output in the [Core Concepts](https://securityresearch.google/magika/core-concepts) section of Magika's website.
-
-
-## API documentation
-
-The Python API is documented in the [Python bindings](https://securityresearch.google/magika/cli-and-bindings/python/) section of Magika's website, and via docstrings in the `Magika` module source code.
-
-
-## Research Paper and Citation
-
-We describe how we developed Magika and the choices we made in our research paper, which was accepted at the International Conference on Software Engineering (ICSE) 2025. You can find a copy of the paper [here](https://securityresearch.google/magika/2025_icse_magika.pdf).
-
-If you use this software for your research, please cite it as:
-
-```bibtex
-@InProceedings{fratantonio25:magika,
-  author = {Yanick Fratantonio and Luca Invernizzi and Loua Farah and Kurt Thomas and Marina Zhang and Ange Albertini and Francois Galilee and Giancarlo Metitieri and Julien Cretin and Alexandre Petit-Bianco and David Tao and Elie Bursztein},
-  title = {{Magika: AI-Powered Content-Type Detection}},
-  booktitle = {Proceedings of the International Conference on Software Engineering (ICSE)},
-  month = {April},
-  year = {2025}
-}
-```
+Tags matching `v<version>` publish the exact tested artifacts through GitHub
+Trusted Publishing. Configure the PyPI pending publisher with project
+`mineru-magika`, owner `myhloli`, repository `mineru-magika`, workflow `publish.yml`
+and environment `pypi`. Publishing requires all validation jobs to pass.

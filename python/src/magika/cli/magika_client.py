@@ -37,7 +37,7 @@ from magika.logger import get_logger
 from magika.types import ContentTypeLabel, MagikaResult
 from magika.types.overwrite_reason import OverwriteReason
 
-VERSION = importlib.metadata.version("magika")
+VERSION = importlib.metadata.version("mineru-magika")
 
 CONTACT_EMAIL = "magika-dev@google.com"
 

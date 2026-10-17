@@ -19,3 +19,9 @@ scratchpad/
 */node_modules/*
 docs/dist
 js/dist
+
+# Local fork build and validation environments
+.venv*/
+build/
+.pytest_cache/
+.ruff_cache/

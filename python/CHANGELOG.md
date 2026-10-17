@@ -1,3 +1,14 @@
+# mineru-magika fork changes
+
+## 1.0.3
+
+- Fork upstream Python 1.0.3 at `9f225aa480e675af44343b9160f077073ed1b752`.
+- Rename the distribution, keep the `magika` import, and remove automatic ORT dependencies.
+- Publish only pure Python wheel/sdist; retain upstream models and Python behavior.
+- Add isolated install, resource integrity, CPU/DirectML and Trusted Publishing checks.
+
+---
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

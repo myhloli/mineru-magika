@@ -1,0 +1,197 @@
+name: Validate and publish Python package
+
+on:
+  push:
+    branches: [main, 'codex/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7
+      - name: Check version and release tag
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import tomllib
+          project = tomllib.loads(pathlib.Path('python/pyproject.toml').read_text())['project']
+          assert project['name'] == 'mineru-magika'
+          version = project['version']
+          if os.environ['REF_TYPE'] == 'tag':
+              assert os.environ['REF_NAME'] == f'v{version}'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+          PY
+      - name: Check lockfile and changed Python files
+        working-directory: python
+        run: |
+          uv lock --check
+          uvx --from 'ruff==0.14.2' ruff check src/magika/__init__.py src/magika/cli/magika_client.py scripts/pre_release_check.py scripts/verify_artifacts.py scripts/verify_distribution.py
+          uvx --from 'ruff==0.14.2' ruff format --check src/magika/__init__.py src/magika/cli/magika_client.py scripts/pre_release_check.py scripts/verify_artifacts.py scripts/verify_distribution.py
+      - name: Build wheel and source distribution
+        working-directory: python
+        run: uv build --out-dir ../dist
+      - name: Rebuild wheel from source distribution
+        run: |
+          mkdir -p build/source
+          tar -xzf dist/*.tar.gz -C build/source
+          uv build --wheel build/source/mineru_magika-${{ steps.version.outputs.version }} --out-dir build/rebuilt
+          python python/scripts/verify_artifacts.py --dist dist --rebuilt build/rebuilt --expected-version '${{ steps.version.outputs.version }}'
+          uvx --from twine twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
+
+  install-without-runtime:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+        artifact: [wheel, sdist]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist
+      - name: Install normally into an empty environment
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          uv venv --seed .venv-check
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            echo "$PWD/.venv-check/Scripts" >> "$GITHUB_PATH"
+          else
+            echo "$PWD/.venv-check/bin" >> "$GITHUB_PATH"
+          fi
+          if [[ "$ARTIFACT" == wheel ]]; then
+            uv pip install --python .venv-check dist/*.whl
+          else
+            uv pip install --python .venv-check dist/*.tar.gz
+          fi
+      - name: Verify no runtime or upstream distribution was installed
+        run: |
+          python python/scripts/verify_distribution.py --expected-version '${{ needs.build.outputs.version }}'
+          python -m pip check
+
+  runtime-smoke:
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        runtime: [cpu]
+        include:
+          - {os: ubuntu-latest, python: '3.8', runtime: cpu}
+          - {os: ubuntu-latest, python: '3.9', runtime: cpu}
+          - {os: windows-latest, python: '3.10', runtime: directml}
+          - {os: windows-latest, python: '3.11', runtime: directml}
+          - {os: windows-latest, python: '3.12', runtime: directml}
+          - {os: windows-latest, python: '3.13', runtime: directml}
+          - {os: windows-latest, python: '3.14', runtime: directml}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist
+      - name: Install artifact with exactly one runtime
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+        run: |
+          uv venv --seed .venv-check
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            echo "$PWD/.venv-check/Scripts" >> "$GITHUB_PATH"
+          else
+            echo "$PWD/.venv-check/bin" >> "$GITHUB_PATH"
+          fi
+          if [[ "$RUNTIME" == directml ]]; then
+            uv pip install --python .venv-check dist/*.whl 'onnxruntime-directml>=1.23,<2'
+          else
+            uv pip install --python .venv-check dist/*.whl 'onnxruntime>=1.17,<2'
+          fi
+      - name: Check installed metadata, resources, versions and runtime identity
+        run: |
+          python python/scripts/verify_distribution.py --expected-version '${{ needs.build.outputs.version }}' --runtime '${{ matrix.runtime }}'
+          python -m pip check
+          python python/scripts/pre_release_check.py --expected-version '${{ needs.build.outputs.version }}' --use-python-client
+      - name: Run upstream API and Python CLI corpus checks
+        run: |
+          python python/scripts/run_quick_test_magika_module.py
+          python python/scripts/run_quick_test_magika_cli.py --client-path magika-python-client
+
+  upstream-regression:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist
+      - name: Install built artifact and regression dependencies
+        run: |
+          uv venv --seed .venv-check
+          echo "$PWD/.venv-check/bin" >> "$GITHUB_PATH"
+          uv pip install --python .venv-check dist/*.whl 'onnxruntime>=1.17,<2' pytest dacite tqdm
+      - name: Run full upstream Python suite including slow tests
+        working-directory: python
+        run: python -m pytest tests -q
+
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    needs: [build, install-without-runtime, runtime-smoke, upstream-regression]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/mineru-magika/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

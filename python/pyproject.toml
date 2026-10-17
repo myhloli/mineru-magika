@@ -1,6 +1,6 @@
 [project]
-name = "magika"
-description = "A tool to determine the content type of a file with deep learning"
+name = "mineru-magika"
+description = "Magika 1.0.3 Python fork with caller-managed ONNX Runtime"
 authors = [
     {name = "Magika Developers", email = "magika-dev@google.com"},
 ]
@@ -34,28 +34,19 @@ classifiers = [
 ]
 version = "1.0.3"
 
-dependencies = [
-    "click>=8.1.7",
+dependencies = ["click>=8.1.7"]
 
-    # Python 3.14+: Min version 1.24.1
-    "onnxruntime>=1.24.1 ; python_version >= '3.14'",
-    # Python 3.13: Min version 1.21.0
-    "onnxruntime>=1.21.0 ; python_version == '3.13'",
-    # Python 3.11 - 3.12: Min version 1.17.0
-    "onnxruntime>=1.17.0 ; python_version >= '3.11' and python_version < '3.13'",
-    # Python 3.10: Support dropped in 1.24.1 (use latest compatible)
-    "onnxruntime>=1.17.0, <1.24.1 ; python_version == '3.10'",
-    # Python 3.9: Support dropped in 1.20.0
-    "onnxruntime>=1.17.0, <1.20.0 ; python_version <= '3.9'",
-]
+[project.scripts]
+magika-python-client = "magika.cli.magika_client:main"
+magika = "magika.cli.magika_rust_client_not_found_warning:main"
 
 
 [project.urls]
-Homepage = "https://github.com/google/magika"
-Documentation = "https://github.com/google/magika/blob/main/python/README.md"
-Repository = "https://github.com/google/magika/"
-Issues = "https://github.com/google/magika/issues"
-Changelog = "https://github.com/google/magika/blob/main/python/CHANGELOG.md"
+Homepage = "https://github.com/myhloli/mineru-magika"
+Documentation = "https://github.com/myhloli/mineru-magika/blob/main/python/README.md"
+Repository = "https://github.com/myhloli/mineru-magika/"
+Issues = "https://github.com/myhloli/mineru-magika/issues"
+Changelog = "https://github.com/myhloli/mineru-magika/blob/main/python/CHANGELOG.md"
 
 
 [dependency-groups]
@@ -72,19 +63,18 @@ dev = [
 ]
 
 [build-system]
-requires = ["maturin>=1.12.2"]
-build-backend = "maturin"
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
 
 [[tool.uv.index]]
 url = "https://pypi.org/simple"
 default = true
 
-[tool.maturin]
-python-source = "src"
-module-name = "magika"
-bindings = "bin"
-manifest-path = "../rust/cli/Cargo.toml"
-locked = true
+[tool.hatch.build.targets.wheel]
+packages = ["src/magika"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/pyproject.toml", "/README.md", "/CHANGELOG.md", "/LICENSE"]
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.

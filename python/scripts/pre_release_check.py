@@ -166,7 +166,9 @@ def get_rust_cli_version() -> str:
 def get_magika_package_version_via_pip_show() -> str:
     try:
         r = subprocess.run(
-            ["python3", "-m", "pip", "show", "magika"], capture_output=True, text=True
+            [sys.executable, "-m", "pip", "show", "mineru-magika"],
+            capture_output=True,
+            text=True,
         )
         lines = r.stdout.strip().split("\n")
         for line in lines:

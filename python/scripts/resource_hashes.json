@@ -1,0 +1,8 @@
+{
+  "magika/config/content_types_kb.min.json": "75208adba69bc0556403b62b32ef3ccf8b5ce494411780845852e52e6583a10d",
+  "magika/models/standard_v3_3/README.md": "0fbe867dedcdfc2dfb3fe31bb66724af8a7fd084a403408958fb7660058f23db",
+  "magika/models/standard_v3_3/config.min.json": "ae24c742205358f6ff6dfd5facb6743fb69743dbba8373e73da58ff0cbd695db",
+  "magika/models/standard_v3_3/metadata.json": "1f89624fc8ff832308cddf8692149cd7d1072e7aba2f4d348e2400e3aafb2c4d",
+  "magika/models/standard_v3_3/model.onnx": "fe2d2eb49c5f88a9e0a6c048e15d6ffdf86235519c2afc535044de433169ec8c",
+  "magika/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

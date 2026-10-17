@@ -28,7 +28,7 @@ from magika.types.prediction_mode import PredictionMode
 from magika.types.status import Status
 
 try:
-    __version__ = version(__name__)
+    __version__ = version("mineru-magika")
 except PackageNotFoundError:
     # Package is not installed (e.g., during development)
     __version__ = "unknown"
